@@ -10,8 +10,8 @@ variable "nlb_tg_arn" {
 }
 
 variable "max_lookup_per_invocation" {
-  type 		  = string
-  default 	  = "10"
+  type        = string
+  default     = "10"
   description = "Maximum number of invocations of DNS lookup"
 }
 

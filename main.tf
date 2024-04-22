@@ -3,9 +3,9 @@ resource "aws_cloudwatch_event_rule" "populate_nlb_tg_with_rds_event" {
   name                = "${var.resource_name_prefix}populate-nlb-tg-with-rds-event"
   description         = "Populate NLB Target Group with RDS IP"
   schedule_expression = var.schedule_expression
-  depends_on          = [
-                  aws_lambda_function.populate_nlb_tg_with_rds_updater_80
-                ]
+  depends_on = [
+    aws_lambda_function.populate_nlb_tg_with_rds_updater_80
+  ]
 }
 
 # Cloudwatch event target
@@ -118,9 +118,9 @@ resource "aws_lambda_function" "populate_nlb_tg_with_rds_updater_80" {
 
   environment {
     variables = {
-      RDS_DNS_NAME                      = element(split(":", var.rds_dns_name), 0)
-      NLB_TG_ARN                        = var.nlb_tg_arn
-      MAX_LOOKUP_PER_INVOCATION         = var.max_lookup_per_invocation
+      RDS_DNS_NAME              = element(split(":", var.rds_dns_name), 0)
+      NLB_TG_ARN                = var.nlb_tg_arn
+      MAX_LOOKUP_PER_INVOCATION = var.max_lookup_per_invocation
     }
   }
 }
