@@ -1,10 +1,11 @@
 import boto3
 from botocore.exceptions import ClientError
 
-import sys, os, json, logging, time
+import sys
+import os
+import logging
 import dns.resolver
-from collections import defaultdict
-from datetime    import datetime
+from datetime import datetime
 
 # Timeout on one NS
 DNS_RESOLVER_TIMEOUT = 1
@@ -26,18 +27,21 @@ max_lookup_per_invocation = int(os.getenv('MAX_LOOKUP_PER_INVOCATION', '10'))
 logger.info("MAX_LOOKUP_PER_INVOCATION is %s." % max_lookup_per_invocation)
 debugmode = False
 
+
 def init():
     # Setup AWS connection
-    aws_region     = os.getenv('AWS_REGION', 'us-east-1')
+    aws_region = os.getenv('AWS_REGION', 'us-east-1')
 
     global elbv2
     logger.info("-----> Connecting to region \"%s\"", aws_region)
     elbv2 = boto3.client("elbv2", region_name=aws_region)
     logger.info("-----> Connected to region \"%s\"", aws_region)
 
+
 def debugout(module, data):
     if debugmode:
         logger.info("DEBUG %s : %s" % (module, data))
+
 
 def precondition(pre_condition, error_message):
     """
@@ -112,6 +116,7 @@ def dns_lookup_with_retry(domain_name, record_type, total_retry_count, dns_serve
         attempt += 1
     return dns_lookup_result_set
 
+
 def get_node_ip_from_dns(dns_name, record_type, total_retry_count):
     """
     Get node IP through DNS lookup
@@ -126,6 +131,7 @@ def get_node_ip_from_dns(dns_name, record_type, total_retry_count):
         dns_name, record_type, total_retry_count
     )
     return node_ip_set
+
 
 def get_ip_from_dns():
     """
@@ -163,8 +169,9 @@ def register_target(tg_arn, new_target_list):
     except ClientError as e:
         logger.exception(
             f"Failed to register target to target group. "
-            f"Targets: {new_target_list}. Target group: {tg_arn}"
+            f"Targets: {new_target_list}. Target group: {tg_arn}: {e}"
         )
+
 
 def deregister_target(tg_arn, new_target_list):
     """
@@ -180,8 +187,9 @@ def deregister_target(tg_arn, new_target_list):
     except ClientError as e:
         logger.exception(
             f"Failed to deregister target to target group. "
-             f"Targets: {new_target_list}. Target group: {tg_arn}"
+            f"Targets: {new_target_list}. Target group: {tg_arn}: {e}"
          )
+
 
 def get_ip_target_list_by_target_group_arn(tg_arn):
     """
@@ -194,8 +202,8 @@ def get_ip_target_list_by_target_group_arn(tg_arn):
         response = elbv2.describe_target_health(TargetGroupArn=tg_arn)
         for target in response["TargetHealthDescriptions"]:
             registered_ip_list.append(target["Target"]["Id"])
-    except ClientError:
-        logger.exception(f"Failed to get target list from target group - {tg_arn}")
+    except ClientError as e:
+        logger.exception(f"Failed to get target list from target group - {tg_arn}: {e}")
 
     logger.info(
         f"RDS IPs that are currently registered with the target group: {registered_ip_list}. "
@@ -208,7 +216,7 @@ def get_ip_target_list_by_target_group_arn(tg_arn):
 def handler(event, context):
 
     init()
-    
+
     # ---- Step 1 -----
     # Get IP from DNS
     logger.info(">>>>Step-1: Get IPs from DNS<<<<")
@@ -224,7 +232,7 @@ def handler(event, context):
         f"RDS IPs from target group ({nlb_tg_arn}): {ip_from_target_group_set}. "
         f"Total IP count: {len(ip_from_target_group_set)}"
     )
-    
+
     now = datetime.now()
     active_ip_from_dns_meta_data = {
         "RDSName": rds_dns_name,
@@ -238,7 +246,7 @@ def handler(event, context):
 
     logger.info(">>>>Step-3: compare DNS IP address with IP Address in target group<<<<")
     logger.info(f"ip_from_target_group_set : {ip_from_target_group_set}")
-    logger.info( f"ip_from_dns_set : {ip_from_dns_set}")
+    logger.info(f"ip_from_dns_set : {ip_from_dns_set}")
     targetIds = list(ip_from_dns_set)
     if len(ip_from_dns_set) == 0:
         logger.info(f"No DNS Entry found for : {rds_dns_name}")
@@ -251,6 +259,7 @@ def handler(event, context):
             deregister_target(nlb_tg_arn, old_targets_list)
     else:
         logger.info(f"target group already has IP : {targetIds[0]}")
+
 
 # Manual invocation of the script (only used for testing)
 if __name__ == "__main__":
