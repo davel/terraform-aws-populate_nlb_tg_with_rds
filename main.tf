@@ -1,11 +1,23 @@
-# Cloudwatch event rule
-resource "aws_cloudwatch_event_rule" "populate_nlb_tg_with_rds_event" {
-  name                = "${var.resource_name_prefix}populate-nlb-tg-with-rds-event"
-  description         = "Populate NLB Target Group with RDS IP"
-  schedule_expression = var.schedule_expression
-  depends_on = [
-    aws_lambda_function.populate_nlb_tg_with_rds_updater_80
+resource "aws_sns_topic" "this" {
+  name_prefix = "${var.resource_name}-rds"
+}
+
+resource "aws_db_event_sunbscription" "this" {
+  name_prefix = "${var.resource_name}-rds"
+  source_type = "db-instance"
+  event_categories = [
+    "availability",
+    "deletion",
+    "failover",
+    "failure",
+    "maintenance",
+    "notification",
+    "read replica",
+    "recovery",
+    "restoration",
   ]
+  source_ids = [var.db_instance_identifier]
+  sns_topic  = aws_sns_topic.this.arn
 }
 
 # Cloudwatch event target
@@ -98,11 +110,21 @@ resource "aws_iam_role" "populate_nlb_tg_with_rds_lambda" {
 EOF
 }
 
+resource "aws_sns_topic_subscription" "this" {
+  topic_arn = aws_sns_topic.this.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.arn
+}
+
 # AWS Lambda need a zip file
 data "archive_file" "lambda_function" {
   type        = "zip"
   source_dir  = "${path.module}/package"
   output_path = "${path.module}/lambda_function.zip"
+}
+
+data "aws_db_instance" "this" {
+  db_instance_identifier = var.db_instance_identifier
 }
 
 # AWS Lambda function
@@ -112,13 +134,13 @@ resource "aws_lambda_function" "populate_nlb_tg_with_rds_updater_80" {
   role             = aws_iam_role.populate_nlb_tg_with_rds_lambda.arn
   handler          = "populate_nlb_tg_with_rds.handler"
   source_code_hash = data.archive_file.lambda_function.output_base64sha256
-  runtime          = "python3.8"
+  runtime          = "python3.12"
   memory_size      = 128
   timeout          = 300
 
   environment {
     variables = {
-      RDS_DNS_NAME              = element(split(":", var.rds_dns_name), 0)
+      RDS_DNS_NAME              = element(split(":", data.aws_db_instance.this.address), 0)
       NLB_TG_ARN                = var.nlb_tg_arn
       MAX_LOOKUP_PER_INVOCATION = var.max_lookup_per_invocation
     }
