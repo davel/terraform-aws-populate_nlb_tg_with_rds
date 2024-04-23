@@ -17,25 +17,25 @@ logger.setLevel(logging.INFO)
 
 aws_region = None
 
-rds_dns_name = os.getenv('RDS_DNS_NAME', '')
+rds_dns_name = os.getenv("RDS_DNS_NAME", "")
 logger.info("RDS_DNS_NAME is %s." % rds_dns_name)
 
-nlb_tg_arn = os.getenv('NLB_TG_ARN', '')
+nlb_tg_arn = os.getenv("NLB_TG_ARN", "")
 logger.info("NLB_TG_ARN is %s." % nlb_tg_arn)
 
-max_lookup_per_invocation = int(os.getenv('MAX_LOOKUP_PER_INVOCATION', '10'))
+max_lookup_per_invocation = int(os.getenv("MAX_LOOKUP_PER_INVOCATION", "10"))
 logger.info("MAX_LOOKUP_PER_INVOCATION is %s." % max_lookup_per_invocation)
 debugmode = False
 
 
 def init():
     # Setup AWS connection
-    aws_region = os.getenv('AWS_REGION', 'us-east-1')
+    aws_region = os.getenv("AWS_REGION", "us-east-1")
 
     global elbv2
-    logger.info("-----> Connecting to region \"%s\"", aws_region)
+    logger.info('-----> Connecting to region "%s"', aws_region)
     elbv2 = boto3.client("elbv2", region_name=aws_region)
-    logger.info("-----> Connected to region \"%s\"", aws_region)
+    logger.info('-----> Connected to region "%s"', aws_region)
 
 
 def debugout(module, data):
@@ -84,8 +84,7 @@ def dns_lookup(domain_name, record_type, dns_servers=[]):
         except Exception as e:
             dns_servers.remove(nameserver)
             logger.exception(
-                f"Lookup error with name server - {nameserver}. "
-                f"Remaining name server for retry - {dns_servers}. Error: {e}"
+                f"Lookup error with name server - {nameserver}. " f"Remaining name server for retry - {dns_servers}. Error: {e}"
             )
             continue
 
@@ -105,13 +104,10 @@ def dns_lookup_with_retry(domain_name, record_type, total_retry_count, dns_serve
         lookup_result_per_attempt = dns_lookup(domain_name, record_type, dns_servers)
         dns_lookup_result_set = set(lookup_result_per_attempt) | dns_lookup_result_set
         logger.info(
-            f"Attempt-{attempt}: DNS lookup IP count: {len(dns_lookup_result_set)}. "
-            f"DNS lookup result: {dns_lookup_result_set}"
+            f"Attempt-{attempt}: DNS lookup IP count: {len(dns_lookup_result_set)}. " f"DNS lookup result: {dns_lookup_result_set}"
         )
         if len(lookup_result_per_attempt) < 8:
-            logger.info(
-                "There are less than 8 IPs in the DNS response. Stop further DNS lookup..."
-            )
+            logger.info("There are less than 8 IPs in the DNS response. Stop further DNS lookup...")
             break
         attempt += 1
     return dns_lookup_result_set
@@ -127,9 +123,7 @@ def get_node_ip_from_dns(dns_name, record_type, total_retry_count):
     """
 
     # Get IP through DNS lookup
-    node_ip_set = dns_lookup_with_retry(
-        dns_name, record_type, total_retry_count
-    )
+    node_ip_set = dns_lookup_with_retry(dns_name, record_type, total_retry_count)
     return node_ip_set
 
 
@@ -138,12 +132,8 @@ def get_ip_from_dns():
     Get node IP address through DNS lookup. Exit if no IP found in the DNS
     :return: a set of node IP addresses
     """
-    ip_from_dns_set = get_node_ip_from_dns(
-        rds_dns_name, "A", max_lookup_per_invocation
-    )
-    logger.info(
-        f"Node IPs from DNS lookup: {ip_from_dns_set}. Total IP count: {len(ip_from_dns_set)}"
-    )
+    ip_from_dns_set = get_node_ip_from_dns(rds_dns_name, "A", max_lookup_per_invocation)
+    logger.info(f"Node IPs from DNS lookup: {ip_from_dns_set}. Total IP count: {len(ip_from_dns_set)}")
 
     # Check if there is no IP in the DNS. If so, exit from the current Lambda invocation
     try:
@@ -167,10 +157,7 @@ def register_target(tg_arn, new_target_list):
     try:
         elbv2.register_targets(TargetGroupArn=tg_arn, Targets=new_target_list)
     except ClientError as e:
-        logger.exception(
-            f"Failed to register target to target group. "
-            f"Targets: {new_target_list}. Target group: {tg_arn}: {e}"
-        )
+        logger.exception(f"Failed to register target to target group. " f"Targets: {new_target_list}. Target group: {tg_arn}: {e}")
 
 
 def deregister_target(tg_arn, new_target_list):
@@ -181,14 +168,11 @@ def deregister_target(tg_arn, new_target_list):
     """
     logger.info("Deregistering targets: {}".format(new_target_list))
     try:
-        elbv2.deregister_targets(
-            TargetGroupArn=tg_arn, Targets=new_target_list
-        )
+        elbv2.deregister_targets(TargetGroupArn=tg_arn, Targets=new_target_list)
     except ClientError as e:
         logger.exception(
-            f"Failed to deregister target to target group. "
-            f"Targets: {new_target_list}. Target group: {tg_arn}: {e}"
-         )
+            f"Failed to deregister target to target group. " f"Targets: {new_target_list}. Target group: {tg_arn}: {e}"
+        )
 
 
 def get_ip_target_list_by_target_group_arn(tg_arn):
@@ -225,9 +209,7 @@ def handler(event, context):
     # ---- Step 2 -----
     # Get IP that are currently registered with the NLB target group and update CloudWatch metric
     logger.info(">>>>Step-2: Get IPs from target group<<<<")
-    ip_from_target_group_set = set(
-        get_ip_target_list_by_target_group_arn(nlb_tg_arn)
-    )
+    ip_from_target_group_set = set(get_ip_target_list_by_target_group_arn(nlb_tg_arn))
     logger.info(
         f"RDS IPs from target group ({nlb_tg_arn}): {ip_from_target_group_set}. "
         f"Total IP count: {len(ip_from_target_group_set)}"
@@ -240,9 +222,7 @@ def handler(event, context):
         "IPList": list(ip_from_dns_set),
         "IPCount": len(ip_from_dns_set),
     }
-    logger.debug(
-        f"Meta data of active IPs in DNS from the current invocation: {active_ip_from_dns_meta_data}"
-    )
+    logger.debug(f"Meta data of active IPs in DNS from the current invocation: {active_ip_from_dns_meta_data}")
 
     logger.info(">>>>Step-3: compare DNS IP address with IP Address in target group<<<<")
     logger.info(f"ip_from_target_group_set : {ip_from_target_group_set}")

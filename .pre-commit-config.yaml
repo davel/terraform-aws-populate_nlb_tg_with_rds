@@ -1,0 +1,71 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: c4a0b883114b00d8d76b479c820ce7950211c99b  # frozen: v4.5.0
+    hooks:
+      # generic useful hooks
+      - id: trailing-whitespace
+        alias: python
+        name: trailing-whitespace [python]
+        types: [python]
+      # ensure that end of line is only a new line char (no spaces)
+      - id: end-of-file-fixer
+        alias: python
+        name: end-of-file-fixer [python]
+        types: [python]
+      # don't allow a huge file to be inserted inside a commit (500kb+)
+      - id: check-added-large-files
+        alias: python
+        name: check-added-large-files [python]
+        types: [python]
+      # check if have left merge conflict.
+      - id: check-merge-conflict
+        alias: python
+        name: check-merge-conflict [python]
+        types: [python]
+      - id: trailing-whitespace
+        alias: yaml
+        name: trailing-whitespace [yaml]
+        types: [yaml]
+      # ensure that end of line is only a new line char (no spaces)
+      - id: end-of-file-fixer
+        alias: yaml
+        name: end-of-file-fixer [yaml]
+        types: [yaml]
+      # check if have left merge conflict
+      - id: check-merge-conflict
+        alias: yaml
+        name: check-merge-conflict [yaml]
+        types: [yaml]
+  - repo: https://github.com/psf/black
+    rev: 6fdf8a4af28071ed1d079c01122b34c5d587207a  # frozen: 24.2.0
+    hooks:
+      - id: black
+        alias: python
+        name: formatter [python]
+        args: [--line-length=131]
+        exclude: ^package/dns/
+  - repo: https://github.com/psf/black
+    rev: 6fdf8a4af28071ed1d079c01122b34c5d587207a  # frozen: 24.2.0
+    hooks:
+      - id: black
+        alias: python
+        name: formatter checker [python]
+        log_file: lint_output/black_results
+        args: [--check, --diff, --line-length=131]
+        exclude: ^package/dns/
+  - repo: https://github.com/pycqa/flake8
+    rev: 7d37d9032d0d161634be4554273c30efd4dea0b3  # frozen: 7.0.0
+    hooks:
+      - id: flake8
+        alias: python
+        name: linter [python]
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: "d9addbeb3614a69d4f96a60d3a090bfddfbb1596"  # frozen: v1.88.4
+    hooks:
+      - id: terraform_fmt
