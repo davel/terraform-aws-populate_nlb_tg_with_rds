@@ -1,9 +1,9 @@
 resource "aws_sns_topic" "this" {
-  name_prefix = "${var.resource_name}-rds"
+  name_prefix = "${var.resource_name_prefix}-rds"
 }
 
-resource "aws_db_event_sunbscription" "this" {
-  name_prefix = "${var.resource_name}-rds"
+resource "aws_db_event_subscription" "this" {
+  name_prefix = "${var.resource_name_prefix}-rds"
   source_type = "db-instance"
   event_categories = [
     "availability",
@@ -20,20 +20,13 @@ resource "aws_db_event_sunbscription" "this" {
   sns_topic  = aws_sns_topic.this.arn
 }
 
-# Cloudwatch event target
-resource "aws_cloudwatch_event_target" "populate_nlb_tg_with_rds_event_lambda_80_target" {
-  target_id = "populate-nlb-tg-with-rds-event-lambda-80-target"
-  rule      = aws_cloudwatch_event_rule.populate_nlb_tg_with_rds_event.name
-  arn       = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.arn
-}
-
 # permissions to each Lambda function to allow them to be triggered by Cloudwatch
 resource "aws_lambda_permission" "allow_cloudwatch_80" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.populate_nlb_tg_with_rds_event.arn
+  source_arn    = aws_sns_topic.this.arn
 }
 
 # IAM Role for Lambda function
