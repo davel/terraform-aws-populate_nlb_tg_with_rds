@@ -82,7 +82,7 @@ EOF
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name              = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.function_name
+  name              = "/aws/lambda/${aws_lambda_function.populate_nlb_tg_with_rds_updater_80.function_name}"
   retention_in_days = 1
 }
 
@@ -144,4 +144,11 @@ resource "aws_lambda_function" "populate_nlb_tg_with_rds_updater_80" {
   }
 }
 
-
+data "aws_lambda_invocation" "force_update" {
+  function_name = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.function_name
+  input         = "{}"
+  depends_on = [
+    aws_lambda_function.populate_nlb_tg_with_rds_updater_80,
+    aws_sns_topic_subscription.this
+  ]
+}
