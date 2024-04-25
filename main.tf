@@ -44,7 +44,7 @@ resource "aws_iam_role_policy" "populate_nlb_tg_with_rds_lambda" {
         "logs:PutLogEvents"
       ],
       "Resource": [
-        aws_cloudwatch_log_group.lambda.arn
+        "${aws_cloudwatch_log_group.lambda.arn}"
       ],
       "Effect": "Allow",
       "Sid": "LambdaLogging"
