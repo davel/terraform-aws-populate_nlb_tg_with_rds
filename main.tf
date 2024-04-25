@@ -25,7 +25,7 @@ resource "aws_lambda_permission" "allow_cloudwatch_80" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.populate_nlb_tg_with_rds_updater_80.function_name
-  principal     = "events.amazonaws.com"
+  principal     = "sns.amazonaws.com"
   source_arn    = aws_sns_topic.this.arn
 }
 
@@ -40,12 +40,11 @@ resource "aws_iam_role_policy" "populate_nlb_tg_with_rds_lambda" {
   "Statement": [
     {
       "Action": [
-        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
       "Resource": [
-        "arn:aws:logs:*:*:*"
+        aws_cloudwatch_group.arn
       ],
       "Effect": "Allow",
       "Sid": "LambdaLogging"
@@ -80,6 +79,11 @@ resource "aws_iam_role_policy" "populate_nlb_tg_with_rds_lambda" {
   ]
 }
 EOF
+}
+
+resource "aws_cloudwatch_log_group" "lambda" {
+  name              = aws_lambda_function.populate_nlb_tg_with_rds_lambda.function_name
+  retention_in_days = 1
 }
 
 resource "aws_iam_role" "populate_nlb_tg_with_rds_lambda" {
